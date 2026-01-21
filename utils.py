@@ -5,6 +5,9 @@ import platform
 import re
 import socket
 
+# Disable FailSafe to prevent crashes on corner mouse movements
+pyautogui.FAILSAFE = False
+
 def check_internet_connection():
     """
     Checks if there is an internet connection by connecting to Google DNS.
