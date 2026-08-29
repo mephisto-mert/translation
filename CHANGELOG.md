@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.0.2] - 2026-08-29
+
+### 🛠️ Windows MSVC Toolchain & CI Environment Fix
+- **Fixed CMake Visual Studio Detection Failure**: Resolved `CMake Error: Generator Visual Studio 16 2019 could not find any instance of Visual Studio` in GitHub Actions by pinning runner to `windows-2022` and adding `ilammy/msvc-dev-cmd@v1` Developer Command Prompt setup before Windows compilation.
+
+---
+
 ## [v1.0.1] - 2026-08-29
 
 ### 🔧 CI Build Stability & Dependency Hardening
