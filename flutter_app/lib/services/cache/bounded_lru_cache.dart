@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/translation_result.dart';
 
-/// True Bounded LRU Cache with debounced async persistence
+/// True Bounded LRU Cache with debounced async persistence and automatic corruption recovery
 class BoundedLruCache {
   final int maxEntries;
   final LinkedHashMap<String, TranslationResult> _cache = LinkedHashMap();
@@ -18,6 +18,7 @@ class BoundedLruCache {
   BoundedLruCache({this.maxEntries = 500});
 
   bool get enabled => _enabled;
+  int get length => _cache.length;
 
   void setEnabled(bool enabled) {
     _enabled = enabled;
@@ -50,7 +51,7 @@ class BoundedLruCache {
     return null;
   }
 
-  /// Put item into LRU cache
+  /// Put item into LRU cache (enforces maxEntries strictly)
   void put(String key, TranslationResult result) {
     if (!_enabled) return;
 
@@ -76,8 +77,14 @@ class BoundedLruCache {
     _cache.clear();
     _isDirty = false;
     _persistenceDebounceTimer?.cancel();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_storageKey);
+    _persistenceDebounceTimer = null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_storageKey);
+      debugPrint('[LruCache] Persistent cache cleared.');
+    } catch (e) {
+      debugPrint('[LruCache] Error clearing persistent storage: $e');
+    }
   }
 
   /// Load cache from persistent storage on startup
@@ -86,30 +93,52 @@ class BoundedLruCache {
     try {
       final prefs = await SharedPreferences.getInstance();
       final rawJson = prefs.getString(_storageKey);
-      if (rawJson != null) {
+      if (rawJson != null && rawJson.trim().isNotEmpty) {
         final decoded = jsonDecode(rawJson) as Map<String, dynamic>;
         _cache.clear();
         decoded.forEach((key, val) {
           if (val is Map<String, dynamic>) {
-            _cache[key] = TranslationResult.fromJson(val);
+            try {
+              _cache[key] = TranslationResult.fromJson(val);
+            } catch (e) {
+              debugPrint('[LruCache] Skipping corrupted item entry for key $key: $e');
+            }
           }
         });
+
+        // Enforce maxEntries strictly if storage contained more items than limit
+        while (_cache.length > maxEntries) {
+          final oldestKey = _cache.keys.first;
+          _cache.remove(oldestKey);
+        }
+
         debugPrint('[LruCache] Loaded ${_cache.length} entries from persistent storage.');
       }
     } catch (e) {
-      debugPrint('[LruCache] Error loading cache from storage: $e');
+      debugPrint('[LruCache] Corrupted or unparseable cache detected ($e). Purging storage...');
+      await _purgeCorruptedStorage();
     }
+  }
+
+  Future<void> _purgeCorruptedStorage() async {
+    _cache.clear();
+    _isDirty = false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_storageKey);
+    } catch (_) {}
   }
 
   void _markDirtyAndDebouncePersist() {
     _isDirty = true;
     _persistenceDebounceTimer?.cancel();
     _persistenceDebounceTimer = Timer(const Duration(seconds: 2), () {
-      _flushToStorage();
+      flushToStorage();
     });
   }
 
-  Future<void> _flushToStorage() async {
+  /// Force flush cache to persistent storage immediately
+  Future<void> flushToStorage() async {
     if (!_isDirty || !_enabled) return;
     _isDirty = false;
     try {
@@ -119,7 +148,7 @@ class BoundedLruCache {
         exportMap[key] = result.toJson();
       });
       await prefs.setString(_storageKey, jsonEncode(exportMap));
-      debugPrint('[LruCache] Debounced persistence saved ${_cache.length} entries to disk.');
+      debugPrint('[LruCache] Saved ${_cache.length} entries to disk.');
     } catch (e) {
       debugPrint('[LruCache] Error flushing cache to storage: $e');
     }
@@ -128,7 +157,7 @@ class BoundedLruCache {
   void dispose() {
     _persistenceDebounceTimer?.cancel();
     if (_isDirty) {
-      _flushToStorage();
+      flushToStorage();
     }
   }
 }

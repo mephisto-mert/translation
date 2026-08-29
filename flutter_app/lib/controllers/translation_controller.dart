@@ -99,6 +99,7 @@ class TranslationController extends ChangeNotifier {
 
     _isTranslating = true;
     _lastError = null;
+    _cache.setEnabled(settings.enablePersistentCache);
     notifyListeners();
 
     final stopwatch = Stopwatch()..start();

@@ -18,22 +18,21 @@ class TranslationFallbackManager {
 
   /// Executes translation using preferred engine or falls back through available healthy engines
   Future<TranslationResult> translateWithFallback(TranslationRequest request) async {
-    final candidateEngines = _getOrderedCandidateEngines(request.preferredEngine);
+    final candidateEngines = _getOrderedCandidateEngines(
+      request.preferredEngine,
+      request.sourceLanguage,
+      request.targetLanguage,
+    );
 
     if (candidateEngines.isEmpty) {
       throw const InvalidRequestError(
-        'No translation engine is currently configured and available.',
+        'No translation engine is currently configured, healthy, and supporting the requested language pair.',
       );
     }
 
     TranslationError? lastError;
 
     for (final engine in candidateEngines) {
-      if (_isEngineInCooldown(engine.id)) {
-        debugPrint('[FallbackManager] Skipping engine ${engine.id} (in cooldown)');
-        continue;
-      }
-
       try {
         debugPrint('[FallbackManager] Attempting translation with engine: ${engine.id}');
         final result = await _executeWithRetry(engine, request);
@@ -66,18 +65,16 @@ class TranslationFallbackManager {
 
   Future<TranslationResult> _executeWithRetry(
       TranslationEngine engine, TranslationRequest request) async {
-    int maxAttempts = 2;
-    int attempt = 0;
+    const int maxAttempts = 2;
 
-    while (attempt < maxAttempts) {
-      attempt++;
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         return await engine.translate(request);
       } on TimeoutError {
-        if (attempt >= maxAttempts) rethrow;
+        if (attempt == maxAttempts) rethrow;
         await _applyBackoff(attempt);
       } on NetworkError {
-        if (attempt >= maxAttempts) rethrow;
+        if (attempt == maxAttempts) rethrow;
         await _applyBackoff(attempt);
       } on ProviderError catch (e) {
         if (e.statusCode != null && e.statusCode! >= 500 && attempt < maxAttempts) {
@@ -88,7 +85,7 @@ class TranslationFallbackManager {
       }
     }
 
-    return await engine.translate(request);
+    throw ProviderError('Engine ${engine.id} execution failed after $maxAttempts attempts.');
   }
 
   Future<void> _applyBackoff(int attempt) async {
@@ -97,19 +94,31 @@ class TranslationFallbackManager {
     await Future.delayed(Duration(milliseconds: baseDelayMs + jitterMs));
   }
 
-  List<TranslationEngine> _getOrderedCandidateEngines(String? preferredId) {
+  List<TranslationEngine> _getOrderedCandidateEngines(
+      String? preferredId, String sourceLang, String targetLang) {
     final result = <TranslationEngine>[];
+
+    bool isEngineValidCandidate(TranslationEngine e) {
+      return e.isConfigured &&
+          e.supportsLanguage(sourceLang, targetLang) &&
+          !_isEngineInCooldown(e.id);
+    }
 
     if (preferredId != null && preferredId != 'auto') {
       final preferred = _engines.firstWhere(
-        (e) => e.id == preferredId && e.isConfigured,
-        orElse: () => _engines.firstWhere((e) => !e.requiresApiKey),
+        (e) => e.id == preferredId && isEngineValidCandidate(e),
+        orElse: () => _engines.firstWhere(
+          (e) => isEngineValidCandidate(e),
+          orElse: () => _engines.firstWhere((e) => false, orElse: () => DummyEngine()),
+        ),
       );
-      result.add(preferred);
+      if (preferred is! DummyEngine && isEngineValidCandidate(preferred)) {
+        result.add(preferred);
+      }
     }
 
     for (final engine in _engines) {
-      if (!result.contains(engine) && engine.isConfigured) {
+      if (!result.contains(engine) && isEngineValidCandidate(engine)) {
         result.add(engine);
       }
     }
@@ -134,4 +143,20 @@ class TranslationFallbackManager {
   void resetCooldowns() {
     _engineCooldowns.clear();
   }
+}
+
+class DummyEngine implements TranslationEngine {
+  @override
+  String get id => 'dummy';
+  @override
+  String get displayName => 'Dummy';
+  @override
+  bool get isConfigured => false;
+  @override
+  bool get requiresApiKey => false;
+  @override
+  bool supportsLanguage(String sourceLang, String targetLang) => false;
+  @override
+  Future<TranslationResult> translate(TranslationRequest request) =>
+      throw UnimplementedError();
 }

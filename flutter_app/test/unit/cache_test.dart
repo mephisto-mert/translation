@@ -48,6 +48,28 @@ void main() {
       expect(cache.get('key2'), isNull);
     });
 
+    test('clears memory cache and respects enabled flag', () {
+      final cache = BoundedLruCache(maxEntries: 5);
+      final res = TranslationResult(
+        translatedText: 'trans',
+        originalText: 'orig',
+        sourceLanguage: 'tr',
+        targetLanguage: 'en',
+        engine: 'google',
+        latency: Duration.zero,
+      );
+
+      cache.put('key1', res);
+      expect(cache.length, equals(1));
+
+      cache.setEnabled(false);
+      expect(cache.length, equals(0));
+      expect(cache.get('key1'), isNull);
+
+      cache.put('key2', res);
+      expect(cache.length, equals(0));
+    });
+
     test('generates consistent SHA-256 cache keys', () {
       final key1 = BoundedLruCache.computeCacheKey(
         text: 'hello',

@@ -47,12 +47,11 @@
 ```text
 flutter_app/
 ├── lib/
-│   ├── constants/              # Color palette, app constants, locale mappings
-│   ├── controllers/            # Feature controllers (Translation, InputMode, BubbleMode, ClipboardMode, Hotkey, History, Settings)
-│   ├── models/                 # Immutable domain models (AppSettings, InputEvent, ReplacementState, TranslationResult, etc.)
-│   ├── providers/              # Application state coordination (TranslationProvider)
+│   ├── constants/              # Color palette, app constants, locale mappings (AppColors, AppLocales)
+│   ├── controllers/            # Feature controllers (TranslationController, InputModeController, BubbleModeController, ClipboardModeController, HotkeyController, HistoryController, SettingsController)
+│   ├── models/                 # Immutable domain models (AppSettings, InputEvent, ReplacementState, TranslationRequest, TranslationResult, etc.)
 │   ├── services/
-│   │   ├── cache/              # BoundedLruCache with SHA-256 keys & debounced persistence
+│   │   ├── cache/              # BoundedLruCache (500 max entries, SHA-256 keys, debounced persistence & corruption recovery)
 │   │   ├── glossary/           # GamingGlossaryService with collision-resistant placeholders
 │   │   ├── native/             # ForegroundWindowService (Win32 HWND FFI) & ClipboardService
 │   │   ├── punctuation/        # PunctuationEngine (URL/path protection & slang transformation)
