@@ -5,6 +5,8 @@ __pycache__/
 .dart_tool/
 build/
 dist/
+dist_release/
+*.zip
 antigravity-awesome-skills/
 awesome-claude-skills/
 peon-ping/
