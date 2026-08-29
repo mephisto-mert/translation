@@ -15,7 +15,7 @@
 
 Download the latest standalone portable release for Windows x64:
 
-👉 **[Download QuickTrace v1.0.2 (Windows x64 ZIP)](https://github.com/mephisto-mert/translation/releases/download/v1.0.2/QuickTrace-Windows-x64-v1.0.2.zip)**
+👉 **[Download QuickTrace v1.0.3 (Windows x64 ZIP)](https://github.com/mephisto-mert/translation/releases/download/v1.0.3/QuickTrace-Windows-x64-v1.0.3.zip)**
 
 **Checksum (SHA-256):**
 ```text

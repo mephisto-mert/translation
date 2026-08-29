@@ -2,8 +2,11 @@ name: QuickTrace Windows Release Pipeline
 
 on:
   push:
+    branches:
+      - master
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   build-windows:

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.0.3] - 2026-08-29
+
+### 🚀 CI Workflow Triggers & Manual Dispatch
+- **Added `workflow_dispatch` Trigger**: Enhanced `.github/workflows/release.yml` with manual trigger capabilities from the GitHub Actions UI.
+- **Added Branch Push Triggers**: Enabled automated build verification on direct pushes to `master` branch in addition to release tags.
+
+---
+
 ## [v1.0.2] - 2026-08-29
 
 ### 🛠️ Windows MSVC Toolchain & CI Environment Fix
