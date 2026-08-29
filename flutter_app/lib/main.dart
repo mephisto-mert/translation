@@ -14,7 +14,6 @@ import 'controllers/hotkey_controller.dart';
 import 'controllers/input_mode_controller.dart';
 import 'controllers/settings_controller.dart';
 import 'controllers/translation_controller.dart';
-import 'providers/translation_provider.dart';
 import 'services/native_hook_service.dart';
 import 'widgets/home_screen.dart';
 
@@ -83,7 +82,6 @@ class QuickTranslateApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => HotkeyController()),
         ChangeNotifierProvider(create: (_) => HistoryController()),
-        ChangeNotifierProvider(create: (_) => TranslationProvider()),
       ],
       child: MaterialApp(
         title: 'Quick Trace Pro',

@@ -11,7 +11,12 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:window_manager/window_manager.dart';
 import '../constants/app_colors.dart';
-import '../providers/translation_provider.dart';
+import '../constants/app_locales.dart';
+import '../controllers/history_controller.dart';
+import '../controllers/settings_controller.dart';
+import '../controllers/translation_controller.dart';
+import '../models/app_settings.dart';
+import '../services/native_hook_service.dart';
 import '../services/translation_history_service.dart';
 import '../widgets/setting_card.dart';
 import '../widgets/language_selector.dart';
@@ -27,87 +32,64 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late final TextEditingController _geminiController;
-  late final TextEditingController _deepLController;
-  bool _showGeminiKey = false;
-  bool _showDeepLKey = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final provider = Provider.of<TranslationProvider>(context, listen: false);
-    _geminiController = TextEditingController(text: provider.geminiApiKey);
-    _deepLController = TextEditingController(text: provider.deepLApiKey);
-  }
-
-  @override
-  void dispose() {
-    _geminiController.dispose();
-    _deepLController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<TranslationProvider>(
-      builder: (context, provider, _) {
-        final s = provider.strings;
+    final settingsCtrl = context.watch<SettingsController>();
+    final transCtrl = context.watch<TranslationController>();
+    final settings = settingsCtrl.settings;
+    final s = AppLocales.getStrings(settings.uiLanguage);
 
-        // Hata mesajı kontrolü ve bildirim Snackbar'ı
-        if (provider.lastErrorMessage != null) {
-          final errMsg = provider.lastErrorMessage!;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(errMsg, style: const TextStyle(color: Colors.white))),
-                  ],
-                ),
-                backgroundColor: AppColors.accentRed,
-                duration: const Duration(seconds: 3),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-            provider.clearLastErrorMessage();
-          });
-        }
-
-        return Scaffold(
-          backgroundColor: AppColors.bgPrimary,
-          body: SafeArea(
-            child: Stack(
+    if (transCtrl.lastError != null) {
+      final errMsg = transCtrl.lastError!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
               children: [
-                // ========= ANA İÇERİK =========
-                _buildMainContent(context, provider, s),
+                const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(errMsg, style: const TextStyle(color: Colors.white))),
               ],
             ),
+            backgroundColor: AppColors.accentRed,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
           ),
         );
-      },
+      });
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.bgPrimary,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            _buildMainContent(context, settings, s),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildMainContent(
-      BuildContext context, TranslationProvider provider, Map<String, String> s) {
+      BuildContext context, AppSettings settings, Map<String, String> s) {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
           // ========= CUSTOM TITLE BAR (drag area) =========
-          if (!kIsWeb && Platform.isWindows) _buildCustomTitleBar(provider),
+          if (!kIsWeb && Platform.isWindows) _buildCustomTitleBar(),
 
           // ========= HEADER =========
-          _buildHeader(provider, s),
+          _buildHeader(context, settings, s),
 
           const SizedBox(height: 16),
 
           // ========= STATUS BAR =========
-          _buildStatusBar(provider, s)
+          _buildStatusBar(context, s)
               .animate()
               .fadeIn(duration: 300.ms)
               .slideY(begin: -0.1, end: 0),
@@ -120,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 children: [
                   // ========= DİL SEÇİCİLER =========
-                  _buildLanguageSelectors(provider, s)
+                  _buildLanguageSelectors(context, settings, s)
                       .animate()
                       .fadeIn(duration: 400.ms, delay: 100.ms)
                       .slideY(begin: 0.05, end: 0),
@@ -128,33 +110,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 16),
 
                   // ========= MOD AYARLARI =========
-                  _buildModeSettings(provider, s)
+                  _buildModeSettings(context, settings, s)
                       .animate()
                       .fadeIn(duration: 400.ms, delay: 200.ms)
-                      .slideY(begin: 0.05, end: 0),
-
-                  const SizedBox(height: 16),
-
-                  // ========= API ANAHTARI AYARLARI =========
-                  _buildApiKeySettings(provider, s)
-                      .animate()
-                      .fadeIn(duration: 400.ms, delay: 250.ms)
-                      .slideY(begin: 0.05, end: 0),
-
-                  const SizedBox(height: 16),
-
-                  // ========= KISAYOL AYARLARI =========
-                  _buildHotkeySettings(provider, s)
-                      .animate()
-                      .fadeIn(duration: 400.ms, delay: 280.ms)
-                      .slideY(begin: 0.05, end: 0),
-
-                  const SizedBox(height: 16),
-
-                  // ========= MOD AÇIKLAMALARI =========
-                  _buildModeDescriptions(provider, s)
-                      .animate()
-                      .fadeIn(duration: 400.ms, delay: 300.ms)
                       .slideY(begin: 0.05, end: 0),
 
                   const SizedBox(height: 16),
@@ -169,6 +127,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const SizedBox(height: 16),
 
+                  // ========= KISAYOL AYARLARI =========
+                  _buildHotkeySettings(context, s)
+                      .animate()
+                      .fadeIn(duration: 400.ms, delay: 280.ms)
+                      .slideY(begin: 0.05, end: 0),
+
+                  const SizedBox(height: 16),
+
+                  // ========= MOD AÇIKLAMALARI =========
+                  _buildModeDescriptions(s)
+                      .animate()
+                      .fadeIn(duration: 400.ms, delay: 300.ms)
+                      .slideY(begin: 0.05, end: 0),
+
+                  const SizedBox(height: 16),
+
                   // ========= GİZLİLİK VE ÖNBELLİK =========
                   const PrivacySettingsCard(),
                 ],
@@ -179,7 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 16),
 
           // ========= ALT BUTON =========
-          _buildMinimizeButton(provider, s)
+          _buildMinimizeButton(s)
               .animate()
               .fadeIn(duration: 400.ms, delay: 400.ms),
         ],
@@ -189,7 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ───────────────────── CUSTOM TITLE BAR ─────────────────────
 
-  Widget _buildCustomTitleBar(TranslationProvider provider) {
+  Widget _buildCustomTitleBar() {
     return GestureDetector(
       onPanStart: (_) => windowManager.startDragging(),
       child: Container(
@@ -221,7 +195,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // Close → tray'e gönder
             _TitleBarButton(
               icon: Icons.close_rounded,
-              onTap: () => provider.minimizeToTray(),
+              onTap: () => windowManager.hide(),
               hoverColor: AppColors.accentRed,
             ),
           ],
@@ -232,7 +206,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ───────────────────── HEADER ─────────────────────
 
-  Widget _buildHeader(TranslationProvider provider, Map<String, String> s) {
+  Widget _buildHeader(BuildContext context, AppSettings settings, Map<String, String> s) {
+    final historyCtrl = context.watch<HistoryController>();
+    final settingsCtrl = context.watch<SettingsController>();
+
     return Row(
       children: [
         const Text(
@@ -265,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ).animate().fadeIn(delay: 200.ms).scale(begin: const Offset(0.8, 0.8)),
         const Spacer(),
         // Hook durumu göstergesi
-        _buildHookIndicator(provider),
+        _buildHookIndicator(context),
         const SizedBox(width: 8),
         // Geçmiş Butonu
         Material(
@@ -273,7 +250,7 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.circular(8),
           child: InkWell(
             borderRadius: BorderRadius.circular(8),
-            onTap: () => _showHistoryDialog(context, provider),
+            onTap: () => _showHistoryDialog(context),
             hoverColor: AppColors.bgButtonHover,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -283,7 +260,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Icon(Icons.history_rounded, size: 16, color: AppColors.accentBlue),
                   const SizedBox(width: 6),
                   Text(
-                    '${provider.history.length}',
+                    '${historyCtrl.items.length}',
                     style: const TextStyle(
                       color: AppColors.accentBlue,
                       fontSize: 12,
@@ -302,12 +279,15 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.circular(8),
           child: InkWell(
             borderRadius: BorderRadius.circular(8),
-            onTap: provider.toggleUiLanguage,
+            onTap: () {
+              final nextLang = settings.uiLanguage == 'tr' ? 'en' : 'tr';
+              settingsCtrl.updateSettings(settings.copyWith(uiLanguage: nextLang));
+            },
             hoverColor: AppColors.bgButtonHover,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: Text(
-                provider.uiLang == 'tr' ? 'TR 🇹🇷' : 'EN 🇺🇸',
+                settings.uiLanguage == 'tr' ? 'TR 🇹🇷' : 'EN 🇺🇸',
                 style: const TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 12,
@@ -321,10 +301,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHookIndicator(TranslationProvider provider) {
-    if (!provider.hooksActive) return const SizedBox.shrink();
+  Widget _buildHookIndicator(BuildContext context) {
+    final hookService = context.watch<NativeHookService>();
+    final transCtrl = context.watch<TranslationController>();
 
-    final isTranslating = provider.isTranslating;
+    if (!hookService.isListening) return const SizedBox.shrink();
+
+    final isTranslating = transCtrl.isTranslating;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -369,17 +352,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ───────────────────── STATUS BAR ─────────────────────
 
-  Widget _buildStatusBar(TranslationProvider provider, Map<String, String> s) {
-    final isOnline = provider.isOnline;
+  Widget _buildStatusBar(BuildContext context, Map<String, String> s) {
+    final hookService = context.watch<NativeHookService>();
+    final transCtrl = context.watch<TranslationController>();
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isOnline
-              ? AppColors.accentGreen.withOpacity(0.3)
-              : AppColors.accentRed.withOpacity(0.3),
+          color: AppColors.accentGreen.withOpacity(0.3),
         ),
       ),
       child: Row(
@@ -388,12 +371,11 @@ class _HomeScreenState extends State<HomeScreen> {
             width: 8,
             height: 8,
             decoration: BoxDecoration(
-              color: isOnline ? AppColors.accentGreen : AppColors.accentRed,
+              color: AppColors.accentGreen,
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: (isOnline ? AppColors.accentGreen : AppColors.accentRed)
-                      .withOpacity(0.5),
+                  color: AppColors.accentGreen.withOpacity(0.5),
                   blurRadius: 6,
                   spreadRadius: 1,
                 ),
@@ -402,21 +384,21 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(width: 10),
           Text(
-            isOnline ? s['system_online']! : s['system_offline']!,
-            style: TextStyle(
-              color: isOnline ? AppColors.accentGreen : AppColors.accentRed,
+            s['system_online']!,
+            style: const TextStyle(
+              color: AppColors.accentGreen,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
           ),
           const Spacer(),
-          if (provider.hooksActive)
+          if (hookService.isListening)
             Text(
-              provider.isTranslating
+              transCtrl.isTranslating
                   ? (s['translating'] ?? 'Çevriliyor...')
                   : (s['hooks_active'] ?? 'Hook\'lar Aktif'),
               style: TextStyle(
-                color: provider.isTranslating
+                color: transCtrl.isTranslating
                     ? AppColors.accentYellow
                     : AppColors.textMuted,
                 fontSize: 10,
@@ -431,7 +413,9 @@ class _HomeScreenState extends State<HomeScreen> {
   // ───────────────────── DİL SEÇİCİLER ─────────────────────
 
   Widget _buildLanguageSelectors(
-      TranslationProvider provider, Map<String, String> s) {
+      BuildContext context, AppSettings settings, Map<String, String> s) {
+    final settingsCtrl = context.read<SettingsController>();
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -439,9 +423,10 @@ class _HomeScreenState extends State<HomeScreen> {
           child: SettingCard(
             title: s['source_lang']!,
             child: LanguageSelectorWidget(
-              selectedCode: provider.sourceLang,
-              uiLang: provider.uiLang,
-              onChanged: provider.setSourceLanguage,
+              selectedCode: settings.sourceLanguage,
+              uiLang: settings.uiLanguage,
+              onChanged: (code) =>
+                  settingsCtrl.updateSettings(settings.copyWith(sourceLanguage: code)),
               showAutoDetect: true,
             ),
           ),
@@ -449,11 +434,17 @@ class _HomeScreenState extends State<HomeScreen> {
         Padding(
           padding: const EdgeInsets.only(top: 38),
           child: IconButton(
-            onPressed:
-                provider.sourceLang != 'auto' ? provider.swapLanguages : null,
+            onPressed: settings.sourceLanguage != 'auto'
+                ? () {
+                    settingsCtrl.updateSettings(settings.copyWith(
+                      sourceLanguage: settings.targetLanguage,
+                      targetLanguage: settings.sourceLanguage,
+                    ));
+                  }
+                : null,
             icon: Icon(
               Icons.swap_horiz_rounded,
-              color: provider.sourceLang != 'auto'
+              color: settings.sourceLanguage != 'auto'
                   ? AppColors.accentBlue
                   : AppColors.textMuted.withOpacity(0.3),
             ),
@@ -464,9 +455,10 @@ class _HomeScreenState extends State<HomeScreen> {
           child: SettingCard(
             title: s['target_lang']!,
             child: LanguageSelectorWidget(
-              selectedCode: provider.targetLang,
-              uiLang: provider.uiLang,
-              onChanged: provider.setTargetLanguage,
+              selectedCode: settings.targetLanguage,
+              uiLang: settings.uiLanguage,
+              onChanged: (code) =>
+                  settingsCtrl.updateSettings(settings.copyWith(targetLanguage: code)),
               showAutoDetect: false,
             ),
           ),
@@ -478,31 +470,36 @@ class _HomeScreenState extends State<HomeScreen> {
   // ───────────────────── MOD AYARLARI ─────────────────────
 
   Widget _buildModeSettings(
-      TranslationProvider provider, Map<String, String> s) {
+      BuildContext context, AppSettings settings, Map<String, String> s) {
+    final settingsCtrl = context.read<SettingsController>();
+
     return SettingCard(
       title: s['active_modes']!,
       child: Column(
         children: [
           _ModeSwitch(
             label: s['bubble_mode']!,
-            value: provider.bubbleMode,
-            onChanged: (_) => provider.toggleBubbleMode(),
+            value: settings.enableBubbleMode,
+            onChanged: (val) =>
+                settingsCtrl.updateSettings(settings.copyWith(enableBubbleMode: val)),
             activeColor: AppColors.accentBlue,
             icon: Icons.bubble_chart_rounded,
           ),
           const SizedBox(height: 6),
           _ModeSwitch(
             label: s['input_mode']!,
-            value: provider.inputMode,
-            onChanged: (_) => provider.toggleInputMode(),
+            value: settings.enableInputMode,
+            onChanged: (val) =>
+                settingsCtrl.updateSettings(settings.copyWith(enableInputMode: val)),
             activeColor: AppColors.accentGreen,
             icon: Icons.keyboard_rounded,
           ),
           const SizedBox(height: 6),
           _ModeSwitch(
             label: s['clipboard_mode']!,
-            value: provider.clipboardMode,
-            onChanged: (_) => provider.toggleClipboardMode(),
+            value: settings.enableClipboardMode,
+            onChanged: (val) =>
+                settingsCtrl.updateSettings(settings.copyWith(enableClipboardMode: val)),
             activeColor: AppColors.accentYellow,
             icon: Icons.content_paste_rounded,
           ),
@@ -511,162 +508,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ───────────────────── API ANAHTARLARI AYARLARI ─────────────────────
-
-  Widget _buildApiKeySettings(TranslationProvider provider, Map<String, String> s) {
-    return SettingCard(
-      title: s['api_keys']!,
-      child: Column(
-        children: [
-          // Gemini API Key
-          Row(
-            children: [
-              const Icon(Icons.auto_awesome, color: AppColors.accentBlue, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  s['gemini_key']!,
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
-                ),
-              ),
-              if (provider.geminiApiKey.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.accentGreen.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    s['active']!,
-                    style: const TextStyle(color: AppColors.accentGreen, fontSize: 10, fontWeight: FontWeight.bold),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _geminiController,
-                  obscureText: !_showGeminiKey,
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
-                  decoration: InputDecoration(
-                    hintText: s['enter_api_key'],
-                    hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                    filled: true,
-                    fillColor: AppColors.bgButton,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                    suffixIcon: IconButton(
-                      icon: Icon(_showGeminiKey ? Icons.visibility_off : Icons.visibility, size: 16, color: AppColors.textMuted),
-                      onPressed: () => setState(() => _showGeminiKey = !_showGeminiKey),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () {
-                  provider.setGeminiApiKey(_geminiController.text);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(s['api_key_saved']!),
-                      duration: const Duration(seconds: 2),
-                      backgroundColor: AppColors.accentGreen,
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentBlue,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: Text(s['save']!, style: const TextStyle(color: Colors.white, fontSize: 12)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          const Divider(color: AppColors.border, height: 1),
-          const SizedBox(height: 14),
-          // DeepL API Key
-          Row(
-            children: [
-              const Icon(Icons.translate, color: AppColors.accentYellow, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  s['deepl_key']!,
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
-                ),
-              ),
-              if (provider.deepLApiKey.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.accentGreen.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    s['active']!,
-                    style: const TextStyle(color: AppColors.accentGreen, fontSize: 10, fontWeight: FontWeight.bold),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _deepLController,
-                  obscureText: !_showDeepLKey,
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
-                  decoration: InputDecoration(
-                    hintText: s['enter_api_key'],
-                    hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                    filled: true,
-                    fillColor: AppColors.bgButton,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                    suffixIcon: IconButton(
-                      icon: Icon(_showDeepLKey ? Icons.visibility_off : Icons.visibility, size: 16, color: AppColors.textMuted),
-                      onPressed: () => setState(() => _showDeepLKey = !_showDeepLKey),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () {
-                  provider.setDeepLApiKey(_deepLController.text);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(s['api_key_saved']!),
-                      duration: const Duration(seconds: 2),
-                      backgroundColor: AppColors.accentGreen,
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentBlue,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: Text(s['save']!, style: const TextStyle(color: Colors.white, fontSize: 12)),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   // ───────────────────── KISAYOL AYARLARI ─────────────────────
 
-  Widget _buildHotkeySettings(TranslationProvider provider, Map<String, String> s) {
+  Widget _buildHotkeySettings(BuildContext context, Map<String, String> s) {
     return SettingCard(
       title: s['hotkey_settings']!,
       child: Column(
@@ -683,9 +527,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          Wrap(
+          const Wrap(
             spacing: 6,
-            children: const [
+            children: [
               Chip(
                 label: Text('Y', style: TextStyle(fontSize: 11, color: AppColors.textPrimary)),
                 backgroundColor: AppColors.bgButton,
@@ -719,7 +563,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 6),
           Wrap(
             spacing: 6,
-            children: provider.triggerChars.map((char) {
+            children: inputTriggerChars.map((char) {
               return Chip(
                 label: Text(char, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.accentGreen)),
                 backgroundColor: AppColors.accentGreen.withOpacity(0.15),
@@ -735,8 +579,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ───────────────────── MOD AÇIKLAMALARI ─────────────────────
 
-  Widget _buildModeDescriptions(
-      TranslationProvider provider, Map<String, String> s) {
+  Widget _buildModeDescriptions(Map<String, String> s) {
     return SettingCard(
       title: s['how_to_use'] ?? 'Nasıl Kullanılır',
       child: Column(
@@ -773,11 +616,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ───────────────────── ALT BUTON ─────────────────────
 
-  Widget _buildMinimizeButton(TranslationProvider provider, Map<String, String> s) {
+  Widget _buildMinimizeButton(Map<String, String> s) {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
-        onPressed: () => provider.minimizeToTray(),
+        onPressed: () => windowManager.hide(),
         icon: const Icon(Icons.minimize_rounded, size: 18),
         label: Text(s['minimize_tray']!),
         style: OutlinedButton.styleFrom(
@@ -792,11 +635,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showHistoryDialog(BuildContext context, TranslationProvider provider) {
+  void _showHistoryDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (ctx) {
-        return _TranslationHistoryModal(provider: provider);
+        return const _TranslationHistoryModal();
       },
     );
   }
@@ -807,9 +650,7 @@ class _HomeScreenState extends State<HomeScreen> {
 // ═══════════════════════════════════════════════════════
 
 class _TranslationHistoryModal extends StatefulWidget {
-  final TranslationProvider provider;
-
-  const _TranslationHistoryModal({required this.provider});
+  const _TranslationHistoryModal();
 
   @override
   State<_TranslationHistoryModal> createState() => _TranslationHistoryModalState();
@@ -827,8 +668,16 @@ class _TranslationHistoryModalState extends State<_TranslationHistoryModal> {
 
   @override
   Widget build(BuildContext context) {
-    final s = widget.provider.strings;
-    final items = widget.provider.searchHistory(_searchQuery);
+    final settingsCtrl = context.watch<SettingsController>();
+    final historyCtrl = context.watch<HistoryController>();
+    final s = AppLocales.getStrings(settingsCtrl.settings.uiLanguage);
+
+    final allItems = historyCtrl.items;
+    final items = _searchQuery.isEmpty
+        ? allItems
+        : allItems.where((item) =>
+            item.originalText.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            item.translatedText.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
 
     return Dialog(
       backgroundColor: AppColors.bgPrimary,
@@ -876,7 +725,7 @@ class _TranslationHistoryModalState extends State<_TranslationHistoryModal> {
                   ),
                 ),
                 const Spacer(),
-                if (widget.provider.history.isNotEmpty)
+                if (allItems.isNotEmpty)
                   TextButton.icon(
                     onPressed: () async {
                       final confirm = await showDialog<bool>(
@@ -905,8 +754,7 @@ class _TranslationHistoryModalState extends State<_TranslationHistoryModal> {
                         ),
                       );
                       if (confirm == true) {
-                        await widget.provider.clearHistory();
-                        setState(() {});
+                        await historyCtrl.clearHistory();
                       }
                     },
                     icon: const Icon(Icons.delete_sweep_rounded, size: 16, color: AppColors.accentRed),
@@ -988,8 +836,7 @@ class _TranslationHistoryModalState extends State<_TranslationHistoryModal> {
                         return _HistoryItemCard(
                           item: item,
                           onDelete: () async {
-                            await widget.provider.removeHistoryItem(item.id);
-                            setState(() {});
+                            await historyCtrl.removeItem(item.id);
                           },
                           s: s,
                         );

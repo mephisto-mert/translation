@@ -129,6 +129,9 @@ class AppLocales {
     LanguageItem(code: 'vi', nameTr: 'Vietnamca', nameEn: 'Vietnamese', flag: 'vi'),
     LanguageItem(code: 'th', nameTr: 'Tayca', nameEn: 'Thai', flag: 'th'),
   ];
+
+  static Map<String, String> getStrings(String uiLang) =>
+      strings[uiLang] ?? strings['tr']!;
 }
 
 class LanguageItem {

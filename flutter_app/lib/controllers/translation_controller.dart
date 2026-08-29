@@ -13,37 +13,58 @@ import '../services/translation/mymemory_translation_engine.dart';
 import '../services/translation/translation_engine.dart';
 import '../services/translation/translation_fallback_manager.dart';
 
+enum TranslationControllerState {
+  initializing,
+  ready,
+  failed,
+  disposed,
+}
+
 class TranslationController extends ChangeNotifier {
   final SecureStorageService _secureStorage = SecureStorageService();
   final BoundedLruCache _cache = BoundedLruCache(maxEntries: 500);
   final GamingGlossaryService _glossaryService = GamingGlossaryService();
 
-  late TranslationFallbackManager _fallbackManager;
+  TranslationFallbackManager? _fallbackManager;
+  TranslationControllerState _state = TranslationControllerState.initializing;
   bool _isTranslating = false;
   String? _lastError;
 
+  TranslationControllerState get state => _state;
   bool get isTranslating => _isTranslating;
   String? get lastError => _lastError;
   BoundedLruCache get cache => _cache;
   GamingGlossaryService get glossaryService => _glossaryService;
 
   TranslationController() {
-    _initEngines();
+    initialize();
   }
 
-  void _initEngines() async {
-    final geminiKey = await _secureStorage.getGeminiApiKey();
-    final deepLKey = await _secureStorage.getDeepLApiKey();
+  /// Deterministic initialization method
+  Future<void> initialize() async {
+    _state = TranslationControllerState.initializing;
+    _lastError = null;
+    notifyListeners();
 
-    final engines = <TranslationEngine>[
-      GeminiTranslationEngine(apiKey: geminiKey),
-      DeepLTranslationEngine(apiKey: deepLKey),
-      GoogleTranslationEngine(),
-      MyMemoryTranslationEngine(),
-    ];
+    try {
+      final geminiKey = await _secureStorage.getGeminiApiKey();
+      final deepLKey = await _secureStorage.getDeepLApiKey();
 
-    _fallbackManager = TranslationFallbackManager(engines);
-    await _cache.loadFromStorage();
+      final engines = <TranslationEngine>[
+        GeminiTranslationEngine(apiKey: geminiKey),
+        DeepLTranslationEngine(apiKey: deepLKey),
+        GoogleTranslationEngine(),
+        MyMemoryTranslationEngine(),
+      ];
+
+      _fallbackManager = TranslationFallbackManager(engines);
+      await _cache.loadFromStorage();
+      _state = TranslationControllerState.ready;
+    } catch (e) {
+      _state = TranslationControllerState.failed;
+      _lastError = 'Translation engines failed to initialize: $e';
+    }
+    notifyListeners();
   }
 
   /// Reloads engines when API keys or credentials change
@@ -59,12 +80,23 @@ class TranslationController extends ChangeNotifier {
     ];
 
     _fallbackManager = TranslationFallbackManager(engines);
-    _fallbackManager.resetCooldowns();
+    _fallbackManager?.resetCooldowns();
     notifyListeners();
   }
 
-  /// Translates request through Cache -> Glossary -> Fallback Engine -> Punctuation -> Cache
   Future<TranslationResult> translate(TranslationRequest request, AppSettings settings) async {
+    if (_state == TranslationControllerState.initializing) {
+      int waitMs = 0;
+      while (_state == TranslationControllerState.initializing && waitMs < 2000) {
+        await Future.delayed(const Duration(milliseconds: 50));
+        waitMs += 50;
+      }
+    }
+
+    if (_state != TranslationControllerState.ready || _fallbackManager == null) {
+      throw StateError(_lastError ?? 'Translation engines unavailable.');
+    }
+
     _isTranslating = true;
     _lastError = null;
     notifyListeners();
@@ -110,7 +142,7 @@ class TranslationController extends ChangeNotifier {
 
       // 3. Perform Translation with Fallback Manager
       final engineRequest = request.copyWith(text: textToTranslate);
-      final rawResult = await _fallbackManager.translateWithFallback(engineRequest);
+      final rawResult = await _fallbackManager!.translateWithFallback(engineRequest);
 
       // 4. Restore Glossary Terms
       String restoredText = rawResult.translatedText;

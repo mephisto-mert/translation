@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quick_translate_pro/services/translation_service.dart';
+import 'package:quick_translate_pro/models/translation_result.dart';
 import 'package:quick_translate_pro/services/punctuation_service.dart';
 
 void main() {
@@ -37,20 +37,21 @@ void main() {
 
   group('TranslationResult Model & Serialization Tests', () {
     test('TranslationResult serializes and deserializes to JSON properly', () {
-      const original = TranslationResult(
-        text: 'Let\'s rush A site',
-        targetLang: 'en',
-        detectedSourceLang: 'tr',
-        engine: TranslationEngine.gemini,
-        errorDetail: null,
+      final original = TranslationResult(
+        translatedText: 'Let\'s rush A site',
+        originalText: 'A gitlim',
+        sourceLanguage: 'tr',
+        targetLanguage: 'en',
+        engine: 'gemini',
+        latency: Duration.zero,
       );
 
       final json = original.toJson();
       final restored = TranslationResult.fromJson(json);
 
-      expect(restored.text, equals(original.text));
-      expect(restored.targetLang, equals(original.targetLang));
-      expect(restored.detectedSourceLang, equals(original.detectedSourceLang));
+      expect(restored.translatedText, equals(original.translatedText));
+      expect(restored.targetLanguage, equals(original.targetLanguage));
+      expect(restored.sourceLanguage, equals(original.sourceLanguage));
       expect(restored.engine, equals(original.engine));
     });
   });
