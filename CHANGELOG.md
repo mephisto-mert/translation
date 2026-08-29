@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.0.4] - 2026-08-29
+
+### 🎨 Premium Visual Branding & Native App Icon
+- **Embedded Custom Windows Executable Icon**: Generated a custom 3D glowing cyan logo emblem (`app_icon.ico`) and embedded multi-resolution icon resources (16x16 up to 256x256) directly into `QuickTrace.exe` Win32 executable resources (`Runner.rc`).
+- **Comprehensive Audit**: Verified all previously implemented features (in-game DirectInput scancode keyboard hook, multi-engine fallback, gaming terms glossary protection, punctuation/slang transformer, LRU cache, and secure DPAPI storage).
+
+---
+
 ## [v1.0.3] - 2026-08-29
 
 ### 🚀 CI Workflow Triggers & Manual Dispatch
