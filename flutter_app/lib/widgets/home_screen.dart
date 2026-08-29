@@ -213,7 +213,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Row(
       children: [
         const Text(
-          'Quick Trace',
+          'QuickTrace',
           style: TextStyle(
             color: AppColors.textPrimary,
             fontSize: 26,
@@ -223,20 +223,18 @@ class _HomeScreenState extends State<HomeScreen> {
         ).animate().fadeIn(duration: 500.ms).slideX(begin: -0.1, end: 0),
         const SizedBox(width: 10),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.accentBlue, Color(0xFF6366f1)],
-            ),
+            color: AppColors.accentBlue.withOpacity(0.15),
             borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: AppColors.accentBlue.withOpacity(0.3)),
           ),
-          child: const Text(
-            'PRO',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1,
+          child: Text(
+            s['app_tagline'] ?? 'Instant Translation for Windows',
+            style: const TextStyle(
+              color: AppColors.accentBlue,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ).animate().fadeIn(delay: 200.ms).scale(begin: const Offset(0.8, 0.8)),

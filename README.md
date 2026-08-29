@@ -1,116 +1,134 @@
-# 🚀 QuickTrace Pro — Windows Desktop Real-Time Translation Utility
+# QuickTrace — Instant Translation for Windows
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Platform: Windows](https://img.shields.io/badge/Platform-Windows_10%2F11_x64-0078D6.svg?logo=windows)](https://microsoft.com)
-[![Flutter: Desktop](https://img.shields.io/badge/Flutter-3.x_Windows_Desktop-02569B.svg?logo=flutter)](https://flutter.dev)
-[![C++: Win32 Native Hooks](https://img.shields.io/badge/C%2B%2B-Win32_RawInput_%26_Hooks-00599C.svg?logo=cplusplus)](https://microsoft.com)
+![QuickTrace Logo](assets/branding/quicktrace-logo.svg)
 
-**QuickTrace Pro** is an open-source real-time input, screen tooltip, and clipboard translation utility for Windows desktop applications, chat programs, and competitive games (such as CS2, Valorant, GTA V, and Rust).
+> **QuickTrace** is a lightweight Windows translation app designed for instant text translation across desktop workflows, gaming, clipboard-based translation, and configurable translation engines.
 
----
-
-## ⚡ Core Features
-
-- **🔒 Secure Credential Storage**: API credentials (Gemini, DeepL) are stored using Windows Data Protection API (DPAPI) via `flutter_secure_storage`. Non-secret preferences remain in `SharedPreferences`. Secrets are masked in the UI (`••••••••1234`) and never logged.
-- **🛡️ Target Window Focus Safety**: Captures target `HWND` and Process ID before translation begins (`ForegroundWindowService`). Before injecting backspaces and replacement text, it verifies whether the target window is still in the foreground. If the user switched windows (e.g. via `Alt+Tab`), replacement is cancelled.
-- **🔄 Multi-Engine Fallback Architecture**: Modular translation engine pipeline (`GeminiTranslationEngine`, `DeepLTranslationEngine`, `GoogleTranslationEngine`, `MyMemoryTranslationEngine`) coordinated by `TranslationFallbackManager`. Handles HTTP 401/403 authentication failures, 429 rate-limit cooldowns, and 500/503 server errors with automatic fallback. Unconfigured engines are skipped.
-- **⚡ Bounded LRU Cache**: Memory-bounded cache (500 max entries) with LRU eviction on access, SHA-256 collision-resistant keys (`source|target|engine|glossaryVersion|normalizedText`), 2-second debounced disk persistence (`quicktrace_lru_cache_v2`), and privacy clearing controls.
-- **🎮 Gaming Glossary Protection**: Preserves competitive CS2 & gaming terminology (`A site`, `B site`, `catwalk`, `banana`, `awp`, `crosshair`, `headshot`) using collision-resistant token placeholders (`__QT_GLOSSARY_x__`) restored post-translation. Supports custom user terms.
-- **🔤 Punctuation & Slang Transformer**: Protects URLs (`https://`), emails, decimal numbers (`3.14`), version numbers (`v2.1`), and Windows file paths (`C:\Users`). Transforms literal machine translation into natural gamer English.
-- **⌨️ DirectInput ScanCode Injection**: Low-level Win32 keyboard hooks + `SendInput` using hardware scan codes (`KEYEVENTF_SCANCODE` & `MapVirtualKey`) for compatibility with full-screen games.
-- **🖥️ Multi-Monitor & DPI Aware Tooltips**: Win32 tooltip overlay positioning using `MonitorFromPoint` & `GetMonitorInfoW`.
+[![Windows](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D6?logo=windows)](https://github.com/mephisto-mert/translation)
+[![Flutter](https://img.shields.io/badge/Framework-Flutter%20Desktop-02569B?logo=flutter)](https://flutter.dev)
+[![Release](https://img.shields.io/badge/Release-v1.0.0-success)](https://github.com/mephisto-mert/translation/releases/tag/v1.0.0)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
 
-## 🌐 Supported Translation Providers
+## 📥 Download
 
-| Provider | Supported | Requires API Key | Endpoint / Model |
-| :--- | :---: | :---: | :--- |
-| **Google Translate** | Yes | No | Unofficial public GTX endpoint (`translate.googleapis.com/translate_a/single`) |
-| **MyMemory** | Yes | No | Public API (`api.mymemory.translated.net/get`) |
-| **Gemini AI** | Yes | Yes | Google Gemini 2.0 Flash REST API (`generativelanguage.googleapis.com`) |
-| **DeepL** | Yes | Yes | DeepL API Free REST endpoint (`api-free.deepl.com/v2/translate`) |
+Download the latest standalone portable release for Windows x64:
 
----
+👉 **[Download QuickTrace v1.0.0 (Windows x64 ZIP)](https://github.com/mephisto-mert/translation/releases/download/v1.0.0/QuickTrace-Windows-x64-v1.0.0.zip)**
 
-## ⌨️ Hotkeys & Key Bindings
-
-- **F9**: Global toggle (Enables / disables all hooks and modes) with Windows system beep feedback.
-- **Alt + DownArrow**: Cycles target language.
-- **Trigger Characters**: `.`, `!`, `?`, `,` (triggers automatic in-line text translation on space press).
-- **In-Game Chat Keys**: `Y`, `U`, `Enter` (activates in-game chat text buffer).
-
----
-
-## 🏗️ Project Architecture
-
+**Checksum (SHA-256):**
 ```text
-flutter_app/
-├── lib/
-│   ├── constants/              # Color palette, app constants, locale mappings (AppColors, AppLocales)
-│   ├── controllers/            # Feature controllers (TranslationController, InputModeController, BubbleModeController, ClipboardModeController, HotkeyController, HistoryController, SettingsController)
-│   ├── models/                 # Immutable domain models (AppSettings, InputEvent, ReplacementState, TranslationRequest, TranslationResult, etc.)
-│   ├── services/
-│   │   ├── cache/              # BoundedLruCache (500 max entries, SHA-256 keys, debounced persistence & corruption recovery)
-│   │   ├── glossary/           # GamingGlossaryService with collision-resistant placeholders
-│   │   ├── native/             # ForegroundWindowService (Win32 HWND FFI) & ClipboardService
-│   │   ├── punctuation/        # PunctuationEngine (URL/path protection & slang transformation)
-│   │   ├── security/           # SecureStorageService (Windows DPAPI)
-│   │   └── translation/        # TranslationEngine interface, Gemini, DeepL, Google, MyMemory & FallbackManager
-│   └── widgets/
-│       ├── settings/           # ApiProviderSettingsCard, GamingGlossarySettingsCard, PrivacySettingsCard
-│       └── home_screen.dart    # Main dashboard UI
-└── windows/runner/native_hooks.cpp # C++ Win32 Hook Engine (RawInput, LowLevelKeyboardProc, SendInput)
+3e4105874d727a6e0a6bac93b6d5a83bb7d271aa274dd352e9c379a87d742cdd  QuickTrace-Windows-x64-v1.0.0.zip
 ```
 
 ---
 
-## 💻 Requirements & Building from Source
+## ✨ Key Features
 
-### Prerequisites
-- **Operating System**: Windows 10 or Windows 11 x64
-- **Framework**: [Flutter SDK 3.x](https://flutter.dev)
-- **C++ Compiler**: Visual Studio 2022 (with *Desktop development with C++* workload)
+- **Instant Keyboard Input Translation**: Real-time input mode buffers keystrokes and replaces text in-place when pressing trigger keys (`.`, `!`, `?`, `,`, or `Enter`).
+- **Mouse Hover Bubble Mode**: Floating translation tooltip appears near the mouse cursor when text is selected in any desktop application.
+- **Clipboard Translation Monitor**: Automatically translates text copied to the Windows clipboard and presents desktop notifications.
+- **Multi-Engine Fallback Pipeline**: Intelligently routes requests through Google Gemini 2.0 Flash, DeepL API, Google Translate (GTX), and MyMemory with automatic failover and rate-limit cooldowns.
+- **Gaming Glossary Term Protection**: Protects CS2 and competitive gaming terms (e.g., *A site*, *B site*, *AWP*, *Rush*, *Eco*, *Rotate*, *Clutch*) from machine translation corruption using collision-resistant placeholders.
+- **Punctuation & Slang Transformer**: Preserves URLs, emails, Windows file paths, decimals, and converts literal slang into natural gamer English.
+- **Bounded LRU Cache**: 500-entry memory-bounded cache with SHA-256 keys, automatic corruption recovery, and debounced disk persistence via `SharedPreferences`.
+- **Hardware DirectInput ScanCodes**: Low-level C++ Win32 hook engine (`SendInput` with `KEYEVENTF_SCANCODE`) compatible with full-screen games (CS2, Valorant, GTA V).
+- **Secure API Key Storage**: API credentials stored using Windows Data Protection API (DPAPI) via `flutter_secure_storage`.
+- **Target Window Focus Verification**: `ForegroundWindowService` HWND/PID validation prevents accidental text injection when switching windows.
 
-### Build Steps
+---
 
-```powershell
-# 1. Clone the repository
-git clone https://github.com/mephisto-mert/translation.git
-cd translation/flutter_app
+## 🌐 Supported Translation Engines
 
-# 2. Install Dart/Flutter dependencies
-flutter pub get
+| Provider | Status | API Key Required | Notes |
+| :--- | :--- | :--- | :--- |
+| **Google Translate (GTX)** | Active (Default) | No | Fast, zero-config endpoint for general translation |
+| **Google Gemini 2.0 Flash** | Active | Yes | AI-powered natural translation with slang context |
+| **DeepL API** | Active | Yes | High-precision formal & casual translation |
+| **MyMemory** | Active (Fallback)| No | Public fallback engine when other engines hit limits |
 
-# 3. Run automated test suite
-flutter test
+---
 
-# 4. Compile Windows Release Executable
-flutter build windows --release
-```
+## 🎮 Gaming Translation
 
-The output executable will be created at:
-`flutter_app/build/windows/x64/runner/Release/quick_translate_pro.exe`
+QuickTrace is optimized for PC gamers requiring fast in-game chat translation without interrupting gameplay:
+
+- **CS2 & Tactical Shooter Compatibility**: Uses low-level C++ DirectInput scancodes so backspace deletion and simulated paste operate smoothly inside full-screen DirectX/Vulkan games.
+- **Custom Glossary Support**: Add custom team terms and callouts to prevent translation engines from misinterpreting gaming acronyms.
+- **Slang Smoothing**: Converts literal Turkish/English chat phrases (e.g., *"tamam geliyorum"*) into authentic gaming English (*"Got it, on my way bro!"*).
 
 ---
 
 ## 🔒 Security & Privacy
 
-- **API Keys**: Stored in Windows DPAPI via `flutter_secure_storage`. Keys are never logged, printed, or saved in plaintext `SharedPreferences`.
-- **Telemetry**: Zero analytics, zero external logging.
-- **Privacy Controls**: Users can clear LRU cache and translation history at any time from the Privacy Settings panel.
-- **Network Data**: When a translation request occurs, text content is sent directly to the selected provider (Google, MyMemory, Gemini, or DeepL).
+- **Local Storage**: Preferences, glossary terms, translation history, and cache entries are stored locally on your machine.
+- **Credential Protection**: API keys are encrypted using Windows DPAPI via `flutter_secure_storage` and never committed or transmitted to third parties except the respective translation provider APIs.
+- **External Data Transmission**: Selected text is transmitted directly to the active translation engine (Google Gemini, DeepL, Google Translate, or MyMemory) over HTTPS depending on your selected engine settings.
 
 ---
 
-## ⚠️ Known Limitations
+## 🛠️ Building from Source
 
-- **Administrator Privileges**: To intercept low-level keyboard hooks in games running as Administrator (e.g., CS2, Valorant), QuickTrace Pro must also be launched as Administrator.
-- **Public API Limits**: Free endpoints (Google GTX, MyMemory) may impose temporary IP rate limits under heavy continuous use.
-- **Mixed-DPI Displays**: Tooltip positioning on multi-monitor setups with different DPI scaling (e.g. 100% + 150%) relies on Windows OS DPI awareness settings.
+### Prerequisites
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (v3.19+ recommended)
+- Visual Studio 2022 with **Desktop development with C++** workload
+- Git
+
+### Build Steps
+
+```bash
+# Clone the repository
+git clone https://github.com/mephisto-mert/translation.git
+cd translation/flutter_app
+
+# Install Dart & Flutter dependencies
+flutter pub get
+
+# Run static analysis
+dart analyze
+
+# Run unit and widget tests
+flutter test
+
+# Build executable for Windows
+flutter build windows --release
+```
+
+The compiled release executable will be located at:
+`flutter_app/build/windows/x64/runner/Release/QuickTrace.exe`
+
+---
+
+## 📁 Repository Structure
+
+```text
+translation/
+├── .github/
+│   └── workflows/
+│       └── release.yml            # CI/CD GitHub release workflow
+├── assets/
+│   └── branding/                  # SVG logos and visual assets
+├── dist_release/                  # Staging directory for distributable
+├── flutter_app/
+│   ├── lib/
+│   │   ├── constants/             # Application locales & UI colors
+│   │   ├── controllers/           # Application state controllers
+│   │   ├── models/                # Translation models & results
+│   │   ├── services/              # Core translation, cache, glossary, & native hooks
+│   │   └── widgets/               # UI components & settings cards
+│   ├── test/                      # Unit and widget test suites
+│   ├── windows/                   # Win32 C++ runner & native hook implementation
+│   └── pubspec.yaml               # Flutter package configuration
+├── legacy_python_prototype/       # Archived Python prototype scripts
+├── CHANGELOG.md                   # Project version changelog
+├── LICENSE                        # MIT License
+├── README.md                      # Primary project sitemap & documentation
+└── SHA256SUMS.txt                 # Release archive checksums
+```
 
 ---
 
 ## 📄 License
 
-Distributed under the MIT License. See `LICENSE` for details.
+Distributed under the MIT License. See `LICENSE` for more information.

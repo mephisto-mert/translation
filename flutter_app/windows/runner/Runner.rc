@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.quicktrace" "\0"
-            VALUE "FileDescription", "quick_translate_pro" "\0"
+            VALUE "CompanyName", "QuickTrace" "\0"
+            VALUE "FileDescription", "Instant Translation for Windows" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "quick_translate_pro" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.quicktrace. All rights reserved." "\0"
-            VALUE "OriginalFilename", "quick_translate_pro.exe" "\0"
-            VALUE "ProductName", "quick_translate_pro" "\0"
+            VALUE "InternalName", "QuickTrace" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 QuickTrace. All rights reserved." "\0"
+            VALUE "OriginalFilename", "QuickTrace.exe" "\0"
+            VALUE "ProductName", "QuickTrace" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

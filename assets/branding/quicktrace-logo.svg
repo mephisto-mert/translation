@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="traceGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background Card -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  <rect width="504" height="504" x="4" y="4" rx="108" fill="none" stroke="#334155" stroke-width="4"/>
+
+  <!-- Q Outer Ring -->
+  <circle cx="256" cy="236" r="128" fill="none" stroke="url(#accentGrad)" stroke-width="36" filter="url(#glow)"/>
+
+  <!-- Translation Speech Bubble Arrow Cutout / Inner Detail -->
+  <path d="M 216 186 L 276 186 L 246 226 Z" fill="#38bdf8"/>
+  <path d="M 236 286 L 296 286 L 266 246 Z" fill="#6366f1"/>
+
+  <!-- QuickTrace Lightning / Speed Tail (Q Tail) -->
+  <path d="M 316 296 L 396 396 L 336 396 L 376 456 L 276 346 L 336 346 Z" fill="url(#traceGrad)" filter="url(#glow)"/>
+</svg>

@@ -12,7 +12,7 @@ import 'package:window_manager/window_manager.dart';
 /// System tray menü öğeleri için sabitler
 class _TrayLabels {
   _TrayLabels._();
-  static const String appTitle = 'Quick Trace Pro';
+  static const String appTitle = 'QuickTrace';
   static const String showWindow = 'Göster / Show';
   static const String quit = 'Çıkış / Quit';
 }

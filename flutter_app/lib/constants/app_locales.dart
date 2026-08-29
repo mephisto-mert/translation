@@ -6,7 +6,8 @@ class AppLocales {
 
   static const Map<String, Map<String, String>> strings = {
     'tr': {
-      'window_title': 'Hızlı Çeviri Pro',
+      'window_title': 'QuickTrace',
+      'app_tagline': 'Windows için Anında Çeviri',
       'system_online': 'Sistem Çevrimiçi & Hazır',
       'system_offline': 'Çevrimdışı - Bağlantıyı Kontrol Et',
       'checking_connection': 'Bağlantı kontrol ediliyor...',
@@ -54,7 +55,8 @@ class AppLocales {
       'default': 'Varsayılan',
     },
     'en': {
-      'window_title': 'Quick Translate Pro',
+      'window_title': 'QuickTrace',
+      'app_tagline': 'Instant Translation for Windows',
       'system_online': 'System Online & Ready',
       'system_offline': 'Offline - Check Connection',
       'checking_connection': 'Checking connection...',

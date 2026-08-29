@@ -1,0 +1,67 @@
+name: QuickTrace Windows Release Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          architecture: x64
+
+      - name: Install Dependencies
+        run: |
+          cd flutter_app
+          flutter pub get
+
+      - name: Run Static Analysis
+        run: |
+          cd flutter_app
+          dart analyze
+
+      - name: Run Automated Tests
+        run: |
+          cd flutter_app
+          flutter test
+
+      - name: Build Windows Release Executable
+        run: |
+          cd flutter_app
+          flutter build windows --release
+
+      - name: Package Distributable Bundle
+        shell: powershell
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          $releaseDir = "flutter_app/build/windows/x64/runner/Release"
+          $stagingDir = "QuickTrace"
+          
+          New-Item -ItemType Directory -Path $stagingDir -Force
+          Copy-Item -Path "$releaseDir/*" -Destination $stagingDir -Recurse -Force
+          
+          $zipName = "QuickTrace-Windows-x64-v$version.zip"
+          Compress-Archive -Path $stagingDir -DestinationPath $zipName -Force
+          
+          (Get-FileHash -Algorithm SHA256 $zipName).Hash.ToLower() + "  " + $zipName | Out-File -FilePath SHA256SUMS.txt -Encoding ascii
+
+      - name: Create GitHub Release & Upload Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            QuickTrace-Windows-x64-*.zip
+            SHA256SUMS.txt
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

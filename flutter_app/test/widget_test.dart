@@ -7,6 +7,6 @@ void main() {
     final hookService = NativeHookService();
     await tester.pumpWidget(QuickTranslateApp(hookService: hookService));
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.text('Quick Trace'), findsOneWidget);
+    expect(find.text('QuickTrace'), findsOneWidget);
   });
 }
