@@ -4,6 +4,7 @@ import time
 import platform
 import re
 import socket
+from constants import Network, Limits, Timers
 
 # Disable FailSafe to prevent crashes on corner mouse movements
 pyautogui.FAILSAFE = False
@@ -14,7 +15,10 @@ def check_internet_connection():
     Fast timeout (1s).
     """
     try:
-        socket.create_connection(("8.8.8.8", 53), timeout=1)
+        socket.create_connection(
+            (Network.DNS_HOST, Network.DNS_PORT),
+            timeout=Network.CONNECTION_TIMEOUT_S
+        )
         return True
     except OSError:
         return False
@@ -26,10 +30,10 @@ def get_clipboard_safe():
     """
     try:
         text = pyperclip.paste()
-        if text and len(text) > 100000:
+        if text and len(text) > Limits.CLIPBOARD_MAX_LENGTH:
             return "" 
         return text
-    except Exception:
+    except (pyperclip.PyperclipException, TypeError):
         return ""
 
 def clean_text_for_translation(text):
@@ -111,26 +115,27 @@ def fix_punctuation_input_mode(text, target_lang="en"):
 def get_selected_text():
     """Robust text selection capture using multiple attempts"""
     pyperclip.copy("") 
-    time.sleep(0.1)
+    time.sleep(Timers.CLIPBOARD_WAIT_S)
     
     if platform.system() == 'Darwin':
         pyautogui.hotkey('command', 'c')
     else:
         # More reliable Ctrl+C sequence
         pyautogui.keyDown('ctrl')
-        time.sleep(0.05)
+        time.sleep(Timers.KEY_DOWN_DELAY_S)
         pyautogui.press('c')
-        time.sleep(0.05)
+        time.sleep(Timers.KEY_DOWN_DELAY_S)
         pyautogui.keyUp('ctrl')
     
     # Retry loop for slow applications
-    for _ in range(10):
-        time.sleep(0.05)
+    for _ in range(Timers.CLIPBOARD_RETRY_COUNT):
+        time.sleep(Timers.CLIPBOARD_RETRY_DELAY_S)
         try:
             text = pyperclip.paste()
             if text and len(text.strip()) > 0:
                 return text
-        except: pass
+        except (pyperclip.PyperclipException, TypeError):
+            pass
     return ""
 
 def get_mouse_position():
