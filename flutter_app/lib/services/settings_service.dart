@@ -5,6 +5,7 @@ library;
 
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'security/secure_storage_service.dart';
 
 /// SharedPreferences key sabitleri
 class _PrefKeys {
@@ -15,10 +16,6 @@ class _PrefKeys {
   static const String bubbleMode = 'bubble_mode';
   static const String inputMode = 'input_mode';
   static const String clipboardMode = 'clipboard_mode';
-  
-  // API Keys
-  static const String geminiApiKey = 'gemini_api_key';
-  static const String deepLApiKey = 'deepl_api_key';
   
   // Hotkey ayarları (VK kod listesi JSON)
   static const String chatKeys = 'chat_keys';
@@ -75,15 +72,17 @@ class SettingsService {
     await _prefs?.setBool(_PrefKeys.clipboardMode, value);
   }
 
-  // ── API Keys ──
-  String get geminiApiKey => _prefs?.getString(_PrefKeys.geminiApiKey) ?? '';
+  // ── API Keys (Secure Windows DPAPI Storage) ──
+  final SecureStorageService _secureStorage = SecureStorageService();
+
+  Future<String> get geminiApiKey async => (await _secureStorage.getGeminiApiKey()) ?? '';
   Future<void> setGeminiApiKey(String key) async {
-    await _prefs?.setString(_PrefKeys.geminiApiKey, key);
+    await _secureStorage.setGeminiApiKey(key);
   }
 
-  String get deepLApiKey => _prefs?.getString(_PrefKeys.deepLApiKey) ?? '';
+  Future<String> get deepLApiKey async => (await _secureStorage.getDeepLApiKey()) ?? '';
   Future<void> setDeepLApiKey(String key) async {
-    await _prefs?.setString(_PrefKeys.deepLApiKey, key);
+    await _secureStorage.setDeepLApiKey(key);
   }
 
   // ── Hotkey Ayarları ──

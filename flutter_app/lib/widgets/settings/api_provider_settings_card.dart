@@ -167,7 +167,7 @@ class _ApiProviderSettingsCardState extends State<ApiProviderSettingsCard> {
                   obscureText: true,
                   style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
                   decoration: InputDecoration(
-                    hintText: 'AIzaSy...',
+                    hintText: 'Gemini API Key (e.g. AIza...)',
                     hintStyle: const TextStyle(color: AppColors.textMuted),
                     filled: true,
                     fillColor: AppColors.cardBg,

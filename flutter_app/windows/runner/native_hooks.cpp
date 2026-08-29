@@ -327,7 +327,12 @@ void NativeHooksPlugin::StartHooks() {
     HookThreadProc();
   });
 
-  Sleep(100);
+  // Wait deterministically for hook thread readiness (Section 30: remove Sleep(100))
+  int retries = 0;
+  while (!hooks_active_.load() && retries < 20) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    retries++;
+  }
 }
 
 void NativeHooksPlugin::StopHooks() {
@@ -531,10 +536,13 @@ void NativeHooksPlugin::SimulateBackspace(int count) {
       inputs.push_back(up);
     }
 
-    SendInput(static_cast<UINT>(inputs.size()), inputs.data(), sizeof(INPUT));
-    Sleep(2);
+    UINT sent = SendInput(static_cast<UINT>(inputs.size()), inputs.data(), sizeof(INPUT));
+    if (sent != inputs.size()) {
+      OutputDebugStringA("[NativeHooks] SendInput backspace failed or partial injection!\n");
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
-  Sleep(15);
+  std::this_thread::sleep_for(std::chrono::milliseconds(15));
 }
 
 void NativeHooksPlugin::SimulatePaste() {
@@ -565,8 +573,11 @@ void NativeHooksPlugin::SimulatePaste() {
   inputs[3].ki.wScan = 0x1D;
   inputs[3].ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP;
 
-  SendInput(4, inputs, sizeof(INPUT));
-  Sleep(50);
+  UINT sent = SendInput(4, inputs, sizeof(INPUT));
+  if (sent != 4) {
+    OutputDebugStringA("[NativeHooks] SendInput paste failed or partial injection!\n");
+  }
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
   is_typing_replacement_ = false;
 }
 
@@ -584,7 +595,10 @@ void NativeHooksPlugin::SimulateKeyPress(int vk_code) {
   inputs[1].ki.wScan = scan;
   inputs[1].ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP;
 
-  SendInput(2, inputs, sizeof(INPUT));
+  UINT sent = SendInput(2, inputs, sizeof(INPUT));
+  if (sent != 2) {
+    OutputDebugStringA("[NativeHooks] SendInput keypress failed!\n");
+  }
 }
 
 void NativeHooksPlugin::SimulateCopy() {

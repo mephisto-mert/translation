@@ -7,6 +7,7 @@ library;
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'glossary/gaming_glossary_service.dart';
 
 // ═══════════════════════════════════════════════════════
 // SABİTLER
@@ -140,52 +141,17 @@ class TranslationService {
     }
   }
 
-  /// Metindeki gaming terimlerini yer tutucularla (__GT_0__, __GT_1__) korumaya alır.
+  static final GamingGlossaryService _glossaryService = GamingGlossaryService();
+
+  /// Metindeki gaming terimlerini collision-resistant yer tutucularla (__QT_GLOSSARY_x__) korumaya alır.
   static (String protectedText, Map<String, String> termMap) _protectGamingTerms(String text) {
-    if (text.isEmpty) return (text, {});
-
-    final termMap = <String, String>{};
-    var protectedText = text;
-    int index = 0;
-
-    // Terimleri uzunluğa göre azalan sırada sırala (ör: "A site", "site"'dan önce eşleşmeli)
-    final sortedTerms = List<String>.from(gamingGlossary)
-      ..sort((a, b) => b.length.compareTo(a.length));
-
-    for (final term in sortedTerms) {
-      final pattern = RegExp(r'\b' + RegExp.escape(term) + r'\b', caseSensitive: false);
-      protectedText = protectedText.replaceAllMapped(pattern, (match) {
-        final original = match.group(0)!;
-        final placeholder = '__GT_${index++}__';
-        termMap[placeholder] = original;
-        return placeholder;
-      });
-    }
-
-    // High Explosive bombası (HE) için özel kontrol
-    final hePattern = RegExp(r'\b(HE|HE nade|HE grenade)\b');
-    protectedText = protectedText.replaceAllMapped(hePattern, (match) {
-      final original = match.group(0)!;
-      final placeholder = '__GT_${index++}__';
-      termMap[placeholder] = original;
-      return placeholder;
-    });
-
-    return (protectedText, termMap);
+    final res = _glossaryService.protectGlossaryTerms(text);
+    return (res.protectedText, res.tokenMap);
   }
 
-  /// Çeviri sonrasında __GT_0__ yer tutucularını orijinal gaming terimleriyle geri yükler.
+  /// Çeviri sonrasında __QT_GLOSSARY_x__ yer tutucularını orijinal gaming terimleriyle geri yükler.
   static String _restoreGamingTerms(String text, Map<String, String> termMap) {
-    if (text.isEmpty || termMap.isEmpty) return text;
-
-    var restored = text;
-    termMap.forEach((placeholder, original) {
-      final numOnly = placeholder.replaceAll(RegExp(r'\D'), '');
-      final flexiblePattern = RegExp(r'__\s*GT_\s*' + numOnly + r'\s*__', caseSensitive: false);
-      restored = restored.replaceAll(flexiblePattern, original);
-    });
-
-    return restored;
+    return _glossaryService.restoreGlossaryTerms(text, termMap);
   }
 
   /// Ana çeviri metodu — fallback zinciri ile

@@ -35,7 +35,7 @@ class BubbleModeController extends ChangeNotifier {
       await Future.delayed(const Duration(milliseconds: 50));
 
       final selectedText = await _hookService.getClipboardText();
-      if (selectedText == null || selectedText.trim().length < minSelectedTextLength) return;
+      if (selectedText.trim().length < minSelectedTextLength) return;
 
       try {
         final request = TranslationRequest(

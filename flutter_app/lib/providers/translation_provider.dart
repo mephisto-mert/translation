@@ -14,6 +14,7 @@ import '../services/punctuation_service.dart';
 import '../services/settings_service.dart';
 import '../services/system_tray_service.dart';
 import '../services/translation_history_service.dart';
+import '../services/native/foreground_window_service.dart';
 
 typedef _BeepC = Int32 Function(Uint32 dwFreq, Uint32 dwDuration);
 typedef _BeepDart = int Function(int dwFreq, int dwDuration);
@@ -75,8 +76,10 @@ class TranslationProvider extends ChangeNotifier {
   // Çeviri sırasında kullanıcının bastığı ekstra tuş sayısı
   // (OS'e giden ama buffer'a eklenmeyen karakterler)
   int _extraCharsDuringTranslation = 0;
+  int _currentRequestId = 0;
 
-  // Clipboard monitoring
+  // Timers
+  Timer? _statusTimer;
   Timer? _clipboardTimer;
   String _lastClipboardText = '';
   DateTime? _lastTranslationTime;
@@ -86,16 +89,18 @@ class TranslationProvider extends ChangeNotifier {
   List<int> _chatKeys = [89, 85, 13]; // Y, U, Enter
   Set<String> _triggerChars = {'.', '!', '?', ','};
 
-  // API Keys
-  static const String _defaultGeminiKey = 'AIzaSyAHUSMIJK9Ube2RMbrGh_F8Uza_vjU9Yzg';
-  String _geminiApiKey = _defaultGeminiKey;
+  // API Keys (Loaded securely from Windows DPAPI)
+  String _geminiApiKey = '';
   String _deepLApiKey = '';
+
+  late final ForegroundWindowService _foregroundService;
 
   TranslationProvider() {
     _hookService = NativeHookService();
     _settingsService = SettingsService();
     _trayService = SystemTrayService();
     _historyService = TranslationHistoryService();
+    _foregroundService = ForegroundWindowService();
     _initialize();
   }
 
@@ -103,10 +108,11 @@ class TranslationProvider extends ChangeNotifier {
     await _settingsService.init();
     await _historyService.init();
     await TranslationService.loadCacheFromStorage();
-    _loadSavedSettings();
+    await _loadSavedSettings();
     if (!kIsWeb) await _trayService.init();
     await checkConnection();
-    Timer.periodic(AppConstants.statusCheckInterval, (_) => checkConnection());
+    _statusTimer?.cancel();
+    _statusTimer = Timer.periodic(AppConstants.statusCheckInterval, (_) => checkConnection());
     if (!kIsWeb) {
       await _startNativeHooks();
       await _registerHotkeys();
@@ -128,7 +134,7 @@ class TranslationProvider extends ChangeNotifier {
     );
   }
 
-  void _loadSavedSettings() {
+  Future<void> _loadSavedSettings() async {
     _sourceLang = _settingsService.sourceLang;
     _targetLang = _settingsService.targetLang;
     _uiLang = _settingsService.uiLang;
@@ -137,9 +143,8 @@ class TranslationProvider extends ChangeNotifier {
     _clipboardMode = _settingsService.clipboardMode;
     _chatKeys = _settingsService.chatKeys;
     _triggerChars = _settingsService.triggerChars.toSet();
-    final savedGeminiKey = _settingsService.geminiApiKey;
-    _geminiApiKey = savedGeminiKey.isEmpty ? _defaultGeminiKey : savedGeminiKey;
-    _deepLApiKey = _settingsService.deepLApiKey;
+    _geminiApiKey = await _settingsService.geminiApiKey;
+    _deepLApiKey = await _settingsService.deepLApiKey;
     
     // API key'leri translation service'e yükle
     TranslationService.geminiApiKey = _geminiApiKey.isEmpty ? null : _geminiApiKey;
@@ -262,6 +267,8 @@ class TranslationProvider extends ChangeNotifier {
   }
 
   Future<void> _processInputTranslation(String text, bool deleteExtraSpace) async {
+    final targetHwnd = _foregroundService.getCurrentForegroundHwnd();
+    final requestId = ++_currentRequestId;
     _isTypingReplacement = true;
     _isExecutingSimulatedKeys = false;
     _replacementCancelled = false;
@@ -275,16 +282,19 @@ class TranslationProvider extends ChangeNotifier {
       final cleanText = trimmedText.replaceAll(RegExp(r'\s+'), ' ').trim();
       if (cleanText.isEmpty) return;
       
-      // ÖNCELİKLE API sonucunu bekle — bu sırada kullanıcının
-      // bastığı ekstra tuşlar _extraCharsDuringTranslation içinde sayılır
       final result = await TranslationService.translate(
         text: cleanText,
         source: _sourceLang,
         target: _targetLang,
       );
       
-      // İptal kontrolü (Escape/Enter basıldıysa veya F9 kapatıldıysa)
-      if (_replacementCancelled || !_allFeaturesActive) return;
+      // Stale response & Foreground Window safety check (Section 23: cancel if Alt+Tabbed)
+      if (requestId != _currentRequestId ||
+          _replacementCancelled ||
+          !_allFeaturesActive ||
+          !_foregroundService.isTargetWindowStillFocused(targetHwnd)) {
+        return;
+      }
 
       // Kullanıcının bekleme süresince yazdığı net ekstra karakter sayısı
       final extraChars = _extraCharsDuringTranslation;
@@ -585,9 +595,13 @@ class TranslationProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    if (!kIsWeb) hotKeyManager.unregisterAll();
+    _statusTimer?.cancel();
+    _clipboardTimer?.cancel();
     _stopClipboardMonitor();
-    _hookService.dispose();
+    if (!kIsWeb) {
+      hotKeyManager.unregisterAll();
+      _hookService.dispose();
+    }
     super.dispose();
   }
 
