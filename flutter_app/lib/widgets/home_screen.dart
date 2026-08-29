@@ -15,6 +15,9 @@ import '../providers/translation_provider.dart';
 import '../services/translation_history_service.dart';
 import '../widgets/setting_card.dart';
 import '../widgets/language_selector.dart';
+import '../widgets/settings/api_provider_settings_card.dart';
+import '../widgets/settings/gaming_glossary_settings_card.dart';
+import '../widgets/settings/privacy_settings_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -153,6 +156,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       .animate()
                       .fadeIn(duration: 400.ms, delay: 300.ms)
                       .slideY(begin: 0.05, end: 0),
+
+                  const SizedBox(height: 16),
+
+                  // ========= GÜVENLİ API VE MOTOR SEÇİMİ =========
+                  const ApiProviderSettingsCard(),
+
+                  const SizedBox(height: 16),
+
+                  // ========= GAMING GLOSSARY =========
+                  const GamingGlossarySettingsCard(),
+
+                  const SizedBox(height: 16),
+
+                  // ========= GİZLİLİK VE ÖNBELLİK =========
+                  const PrivacySettingsCard(),
                 ],
               ),
             ),

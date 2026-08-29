@@ -284,7 +284,25 @@ class NativeHookService {
     }
   }
 
-  /// Temizle
+  /// Show bubble alias for backwards compatibility
+  Future<void> showBubble(String text, int x, int y) => showNativeBubble(text, x, y);
+
+  /// Hide bubble alias for backwards compatibility
+  Future<void> hideBubble() => hideNativeBubble();
+
+  /// Get current mouse position
+  Future<Map<String, int>> getMousePosition() async {
+    if (kIsWeb) return {'x': 100, 'y': 100};
+    try {
+      final res = await _channel.invokeMethod<Map>('getMousePosition');
+      if (res != null) {
+        return {'x': res['x'] as int? ?? 100, 'y': res['y'] as int? ?? 100};
+      }
+    } catch (_) {}
+    return {'x': 100, 'y': 100};
+  }
+
+  /// Clean up
   void dispose() {
     _stopPolling();
     hideNativeBubble();
@@ -301,10 +319,16 @@ class NativeHookService {
 class KeyPressEvent {
   final int vkCode;
   final String char;
+  final bool isAlt;
+  final bool isCtrl;
+  final bool isShift;
 
   const KeyPressEvent({
     required this.vkCode,
     required this.char,
+    this.isAlt = false,
+    this.isCtrl = false,
+    this.isShift = false,
   });
 
   bool get isEnter => vkCode == VkCodes.enter;

@@ -148,8 +148,9 @@ bool _isQuestion(String sentence, String lang) {
       }
     }
 
-    // Cümle içi soru ("So, do you...", "Hey, are you...")
-    for (final starter in _enQuestionStarters) {
+    // Cümle içi soru ("So, do you...", "Hey, are you...") - excluding subject pronouns + am/is/are
+    const midStarters = {'what', 'where', 'when', 'who', 'why', 'how', 'which', 'can', 'could', 'should', 'would', 'will'};
+    for (final starter in midStarters) {
       if (clean.contains(', $starter ') || clean.contains(' $starter ')) {
         return true;
       }

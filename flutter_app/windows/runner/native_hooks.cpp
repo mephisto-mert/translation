@@ -759,16 +759,19 @@ void NativeHooksPlugin::ShowBubble(const std::string& text, int x, int y) {
   if (wndWidth < 120) wndWidth = 120;
   if (wndHeight < 40) wndHeight = 40;
 
-  int screenW = GetSystemMetrics(SM_CXSCREEN);
-  int screenH = GetSystemMetrics(SM_CYSCREEN);
+  POINT pt = {x, y};
+  HMONITOR hMonitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+  MONITORINFO mi = { sizeof(MONITORINFO) };
+  GetMonitorInfoW(hMonitor, &mi);
+  RECT workArea = mi.rcWork;
 
   int posX = x + kBubbleOffsetX;
   int posY = y + kBubbleOffsetY;
 
-  if (posX + wndWidth > screenW) posX = x - wndWidth - kBubbleOffsetX;
-  if (posY + wndHeight > screenH) posY = y - wndHeight - kBubbleOffsetY;
-  if (posX < 0) posX = 10;
-  if (posY < 0) posY = 10;
+  if (posX + wndWidth > workArea.right) posX = x - wndWidth - kBubbleOffsetX;
+  if (posY + wndHeight > workArea.bottom) posY = y - wndHeight - kBubbleOffsetY;
+  if (posX < workArea.left) posX = workArea.left + 10;
+  if (posY < workArea.top) posY = workArea.top + 10;
 
   bubble_hwnd_ = CreateWindowExW(
       WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,

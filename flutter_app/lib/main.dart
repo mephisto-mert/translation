@@ -1,31 +1,33 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:window_manager/window_manager.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
+import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
+
 import 'constants/app_colors.dart';
 import 'constants/app_constants.dart';
+import 'controllers/bubble_mode_controller.dart';
+import 'controllers/clipboard_mode_controller.dart';
+import 'controllers/history_controller.dart';
+import 'controllers/hotkey_controller.dart';
+import 'controllers/input_mode_controller.dart';
+import 'controllers/settings_controller.dart';
+import 'controllers/translation_controller.dart';
 import 'providers/translation_provider.dart';
+import 'services/native_hook_service.dart';
 import 'widgets/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Windows pencere ayarları (web'de atla)
   if (!kIsWeb) {
     await hotKeyManager.unregisterAll();
     await windowManager.ensureInitialized();
 
     const windowOptions = WindowOptions(
-      size: Size(
-        AppConstants.windowWidth,
-        AppConstants.windowHeight,
-      ),
-      minimumSize: Size(
-        AppConstants.windowMinWidth,
-        AppConstants.windowMinHeight,
-      ),
+      size: Size(AppConstants.windowWidth, AppConstants.windowHeight),
+      minimumSize: Size(AppConstants.windowMinWidth, AppConstants.windowMinHeight),
       center: true,
       backgroundColor: Colors.transparent,
       skipTaskbar: false,
@@ -36,47 +38,74 @@ void main() async {
     windowManager.waitUntilReadyToShow(windowOptions, () async {
       await windowManager.show();
       await windowManager.focus();
-      // Pencere kapatıldığında arka planda çalışmaya devam et
       await windowManager.setPreventClose(true);
     });
   }
 
-  runApp(const QuickTranslateApp());
+  final nativeHookService = NativeHookService();
+  await nativeHookService.startHooks();
+
+  runApp(QuickTranslateApp(hookService: nativeHookService));
 }
 
 class QuickTranslateApp extends StatelessWidget {
-  const QuickTranslateApp({super.key});
+  final NativeHookService hookService;
+
+  const QuickTranslateApp({super.key, required this.hookService});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => TranslationProvider(),
-      child: Consumer<TranslationProvider>(
-        builder: (context, provider, _) {
-          return MaterialApp(
-            title: provider.strings['window_title'] ?? 'Quick Translate Pro',
-            debugShowCheckedModeBanner: false,
-            theme: ThemeData(
-              brightness: Brightness.dark,
-              scaffoldBackgroundColor: AppColors.bgPrimary,
-              textTheme: GoogleFonts.interTextTheme(
-                ThemeData.dark().textTheme,
-              ),
-              colorScheme: const ColorScheme.dark(
-                primary: AppColors.accentBlue,
-                surface: AppColors.bgPrimary,
-              ),
-              useMaterial3: true,
-            ),
-            home: const _AppShell(),
-          );
-        },
+    return MultiProvider(
+      providers: [
+        Provider<NativeHookService>.value(value: hookService),
+        ChangeNotifierProvider(create: (_) => SettingsController()),
+        ChangeNotifierProvider(create: (_) => TranslationController()),
+        ChangeNotifierProxyProvider<TranslationController, InputModeController>(
+          create: (ctx) => InputModeController(
+            hookService,
+            ctx.read<TranslationController>(),
+          ),
+          update: (ctx, transCtrl, prev) => prev!,
+        ),
+        ChangeNotifierProxyProvider<TranslationController, BubbleModeController>(
+          create: (ctx) => BubbleModeController(
+            hookService,
+            ctx.read<TranslationController>(),
+          ),
+          update: (ctx, transCtrl, prev) => prev!,
+        ),
+        ChangeNotifierProxyProvider<TranslationController, ClipboardModeController>(
+          create: (ctx) => ClipboardModeController(
+            hookService,
+            ctx.read<TranslationController>(),
+          ),
+          update: (ctx, transCtrl, prev) => prev!,
+        ),
+        ChangeNotifierProvider(create: (_) => HotkeyController()),
+        ChangeNotifierProvider(create: (_) => HistoryController()),
+        ChangeNotifierProvider(create: (_) => TranslationProvider()),
+      ],
+      child: MaterialApp(
+        title: 'Quick Trace Pro',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: AppColors.bgPrimary,
+          textTheme: GoogleFonts.interTextTheme(
+            ThemeData.dark().textTheme,
+          ),
+          colorScheme: const ColorScheme.dark(
+            primary: AppColors.accentBlue,
+            surface: AppColors.bgPrimary,
+          ),
+          useMaterial3: true,
+        ),
+        home: const _AppShell(),
       ),
     );
   }
 }
 
-/// Pencere kapanma olayını yakalayan wrapper
 class _AppShell extends StatefulWidget {
   const _AppShell();
 
@@ -97,10 +126,8 @@ class _AppShellState extends State<_AppShell> with WindowListener {
     super.dispose();
   }
 
-  /// Pencere kapatılmak istendiğinde — tray'e gönder, çıkma
   @override
   void onWindowClose() async {
-    // Pencereyi gizle, arka planda çalışmaya devam et
     await windowManager.hide();
     await windowManager.setSkipTaskbar(true);
   }

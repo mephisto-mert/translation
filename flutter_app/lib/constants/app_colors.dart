@@ -21,5 +21,9 @@ class AppColors {
   static const Color accentRed = Color(0xFFef4444);
   static const Color accentYellow = Color(0xFFFACC15);
   
+  static const Color surface = Color(0xFF1e293b);
+  static const Color cardBg = Color(0xFF1e293b);
+  static const Color accent = Color(0xFF3b82f6);
+
   static const Color border = Color(0xFF334155);
 }
