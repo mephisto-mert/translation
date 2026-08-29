@@ -53,8 +53,11 @@ class _ApiProviderSettingsCardState extends State<ApiProviderSettingsCard> {
     });
 
     final settingsCtrl = context.read<SettingsController>();
+    final translationCtrl = context.read<TranslationController>();
     await settingsCtrl.setGeminiApiKey(key);
-    await context.read<TranslationController>().reloadCredentials();
+    if (!mounted) return;
+    await translationCtrl.reloadCredentials();
+    if (!mounted) return;
 
     try {
       final request = TranslationRequest(
@@ -63,9 +66,7 @@ class _ApiProviderSettingsCardState extends State<ApiProviderSettingsCard> {
         targetLanguage: 'tr',
         preferredEngine: 'gemini',
       );
-      final result = await context
-          .read<TranslationController>()
-          .translate(request, settingsCtrl.settings);
+      final result = await translationCtrl.translate(request, settingsCtrl.settings);
 
       if (mounted) {
         setState(() {
@@ -96,8 +97,11 @@ class _ApiProviderSettingsCardState extends State<ApiProviderSettingsCard> {
     });
 
     final settingsCtrl = context.read<SettingsController>();
+    final translationCtrl = context.read<TranslationController>();
     await settingsCtrl.setDeepLApiKey(key);
-    await context.read<TranslationController>().reloadCredentials();
+    if (!mounted) return;
+    await translationCtrl.reloadCredentials();
+    if (!mounted) return;
 
     try {
       final request = TranslationRequest(
@@ -106,9 +110,7 @@ class _ApiProviderSettingsCardState extends State<ApiProviderSettingsCard> {
         targetLanguage: 'tr',
         preferredEngine: 'deepl',
       );
-      final result = await context
-          .read<TranslationController>()
-          .translate(request, settingsCtrl.settings);
+      final result = await translationCtrl.translate(request, settingsCtrl.settings);
 
       if (mounted) {
         setState(() {
